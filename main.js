@@ -1,7 +1,7 @@
 #! node
 
 import cl from '@twilcynder/commandline'
-import {Client} from 'basic-ftp'
+import {Client, FTPError} from 'basic-ftp'
 import fs from 'fs'
 
 const term_escape = '\x1b[';
@@ -41,6 +41,31 @@ function logColor(string, colorCode){
     console.log(`${term_escape}${colorCode}m`+string+term_reset);
 }
 
+/**
+ * @param {import('basic-ftp').FTPResponse} res 
+ */
+function FTPResponseResultHandler(res){
+    console.log(`Remote (status : ${res.code}) : ${res.message}`);
+}
+
+async function executeRemote(f, resultHandler){
+    try {
+        let res = await f();
+        if (res && resultHandler) resultHandler(res); 
+    } catch (err){
+        console.error("Remote : Error :", err);
+    }
+    cl.stopLogging();
+}
+
+function checkArgs(args, expectedN, message){
+    if (args.length < expectedN) {
+        console.warn("Usage :", message);
+        return false;
+    } 
+    return true;
+}
+
 //-------- CL Commands --------------
 
 cl.commands = {
@@ -53,30 +78,32 @@ cl.commands = {
     },
 
     pwd: async function(){
-        let result = await client.pwd();
-        console.log(result);
-        cl.stopLogging();
+        executeRemote(()=>client.pwd(), console.log);
     },
 
     cd: async function([path]){
-        let res = await client.cd(path);
-        console.log(res);
-        cl.stopLogging();
+        if (!checkArgs(1, "path")) return;
+        executeRemote(() => client.cd(path), FTPResponseResultHandler);
     },
 
     ls: async function(){
-        let res = await client.list();
-        for (let fileInfo of res){
-            if (fileInfo.type == 2){
-                logColor(fileInfo.name, 34);
-            } else {
-                console.log(fileInfo.name);
+        executeRemote(async () => {
+            let res = await client.list();
+            for (let fileInfo of res){
+                if (fileInfo.type == 2){
+                    logColor(fileInfo.name, 34);
+                } else {
+                    console.log(fileInfo.name);
+                }
             }
-        }
-        cl.stopLogging();
+        })
     },
 
-
+    download: async function([filename, path]){
+        if (checkArgs(2, "remote_filename path")) return;
+        let writeStream = fs.createWriteStream(path);
+        await executeRemote( () => client.downloadTo(writeStream, filename), FTPResponseResultHandler);
+    }
 }
 
 //---------- main ------------------
