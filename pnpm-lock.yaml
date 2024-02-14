@@ -1,0 +1,24 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies:
+  '@twilcynder/commandline':
+    specifier: ^1.3.1
+    version: 1.3.2
+  basic-ftp:
+    specifier: ^5.0.4
+    version: 5.0.4
+
+packages:
+
+  /@twilcynder/commandline@1.3.2:
+    resolution: {integrity: sha512-bYxgjQzn7VxDHPyKxQ7RCMoizse0Z8hNxkQ+Fl3/L3PAXfFeW2txiiWva0fULcYrIfzWo9kIELpyhIXCveKo9g==}
+    dev: false
+
+  /basic-ftp@5.0.4:
+    resolution: {integrity: sha512-8PzkB0arJFV4jJWSGOYR+OEic6aeKMu/osRhBULN6RY0ykby6LKhbmuQ5ublvaas5BOwboah5D87nrHyuh8PPA==}
+    engines: {node: '>=10.0.0'}
+    dev: false

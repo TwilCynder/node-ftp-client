@@ -14,22 +14,38 @@ cl.enableList();
 
 let client = new Client();
 
+let current_connection = {
+    host: null,
+    port: null
+}
+
 //------- Functions -------------
 
+/**
+ * Connects to a host. If already connected, closes the connection and connects or fails, depending on the force argument
+ * @param {string} host 
+ * @param {number} port 
+ * @param {boolean} force If true, will override any open connection. If false, the function fails if a connection is already open.
+ * @returns 
+ */
 async function connect(host, port, force = false){
     if (!client.closed){
         if (force){
             client.close();    
         } else {
+            console.error("Already connected");
             return 1;
         }
     }
 
     try {
-        return await client.access({
+        let res = await client.access({
             host, port
         });
 
+        current_connection = {host, port};
+
+        return res;
     } catch (err){
         console.error("Could not connect to the server : ", err);
         return 2;
@@ -69,8 +85,13 @@ function checkArgs(args, expectedN, message){
 //-------- CL Commands --------------
 
 cl.commands = {
+    connect: function(args){
+        if (!checkArgs(args, 2, "host port"))
+        connect(args[0], args[1], false);
+    },
+
     status: function(){
-        if (client.closed) console.log("Not connected");
+        console.log(client.closed ? "Not connected" : `Connected to ${current_connection.host}:${current_connection.port}`);
     },
 
     close: function(){
@@ -82,12 +103,12 @@ cl.commands = {
     },
 
     cd: async function([path]){
-        if (!checkArgs(1, "path")) return;
+        if (!checkArgs(arguments[0], 1, "path")) return;
         executeRemote(() => client.cd(path), FTPResponseResultHandler);
     },
 
     ls: async function(){
-        executeRemote(async () => {
+        await executeRemote(async () => {
             let res = await client.list();
             for (let fileInfo of res){
                 if (fileInfo.type == 2){
@@ -96,11 +117,11 @@ cl.commands = {
                     console.log(fileInfo.name);
                 }
             }
-        })
+        });
     },
 
     download: async function([filename, path]){
-        if (checkArgs(2, "remote_filename path")) return;
+        if (!checkArgs(arguments[0], 2, "remote_filename path")) return;
         let writeStream = fs.createWriteStream(path);
         await executeRemote( () => client.downloadTo(writeStream, filename), FTPResponseResultHandler);
     }
