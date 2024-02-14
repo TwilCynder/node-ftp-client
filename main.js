@@ -1,7 +1,7 @@
 #! node
 
 import cl from '@twilcynder/commandline'
-import {Client, FTPError} from 'basic-ftp'
+import {Client, FTPError, FileInfo} from 'basic-ftp'
 import fs from 'fs'
 
 const term_escape = '\x1b[';
@@ -21,6 +21,41 @@ let current_connection = {
 
 //------- Functions -------------
 
+//------- >> Helper functions
+
+function logColor(string, colorCode){
+    colorCode = "" + colorCode;
+    console.log(`${term_escape}${colorCode}m`+string+term_reset);
+}
+
+/**
+ * @param {import('basic-ftp').FTPResponse} res 
+ */
+function FTPResponseResultHandler(res){
+    console.log(`Remote (status : ${res.code}) : ${res.message}`);
+    cl.stopLogging();
+}
+
+async function executeRemote(f, resultHandler){
+    try {
+        let res = await f();
+        if (res && resultHandler) resultHandler(res);
+        return res; 
+    } catch (err){
+        console.error("Remote : Error :", err);
+    }
+    cl.stopLogging();
+}
+
+function checkArgs(args, expectedN, message){
+    if (args.length < expectedN) {
+        console.warn("Usage :", message);
+        return false;
+    } 
+    return true;
+}
+
+//-------- >> Feature functions
 /**
  * Connects to a host. If already connected, closes the connection and connects or fails, depending on the force argument
  * @param {string} host 
@@ -52,34 +87,70 @@ async function connect(host, port, force = false){
     }
 }
 
-function logColor(string, colorCode){
-    colorCode = "" + colorCode;
-    console.log(`${term_escape}${colorCode}m`+string+term_reset);
+
+/**
+ * Downloads the file named remote_filename (in the working directory) to path local_path. Assumes path does not point to a local directory.
+ * @param {*} remote_filename 
+ * @param {*} local_path 
+ * @returns 
+ */
+function download_(remote_filename, local_path){
+    let writeStream = fs.createWriteStream(local_path);
+    return executeRemote( () => client.downloadTo(writeStream, remote_filename), FTPResponseResultHandler);
 }
 
 /**
- * @param {import('basic-ftp').FTPResponse} res 
+ * Downloads the file named remote_filename (in the working directory) to local directory local_path. local_path must point to an existing directory.
+ * @param {*} remote_filename 
+ * @param {*} local_path 
+ * @returns 
  */
-function FTPResponseResultHandler(res){
-    console.log(`Remote (status : ${res.code}) : ${res.message}`);
+function downloadToDir(remote_filename, local_path){
+    local_path += "/" + remote_filename;
+    return download_(remote_filename, local_path);
 }
 
-async function executeRemote(f, resultHandler){
+/**
+ * Downloads the file named remote_filename (in the working directory) to path local_path (if local_path points to a directory, appends remote_filename to make the resulting file's path)
+ * @param {string} remote_filename 
+ * @param {fs.PathLike} local_path 
+ */
+async function download(remote_filename, local_path){
+    let stat;
     try {
-        let res = await f();
-        if (res && resultHandler) resultHandler(res); 
-    } catch (err){
-        console.error("Remote : Error :", err);
+        stat = fs.statSync(local_path);
+    } catch {
+        stat = null;
     }
-    cl.stopLogging();
+
+    if (stat && stat.isDirectory()){
+        return downloadToDir(remote_filename, local_path);
+    }
+    return download_(remote_filename, local_path);
 }
 
-function checkArgs(args, expectedN, message){
-    if (args.length < expectedN) {
-        console.warn("Usage :", message);
-        return false;
-    } 
-    return true;
+/**
+ * 
+ * @param {fs.PathLike} local_path 
+ * @param {RegExp} filter 
+ */
+async function downloadDir(local_path, filter){
+    let stat = fs.statSync(local_path);
+    if (!stat.isDirectory()){
+        console.error("local_path must be a directory");
+        return;
+    }
+
+    await executeRemote(async () => {
+        let res = await client.list();
+        for (let fileInfo of res){
+            if (fileInfo.type == 1){
+                if (!filter || filter.test(fileInfo.name)){
+                    await downloadToDir(fileInfo.name, local_path);
+                }
+            }
+        }
+    });
 }
 
 //-------- CL Commands --------------
@@ -117,13 +188,18 @@ cl.commands = {
                     console.log(fileInfo.name);
                 }
             }
+            cl.stopLogging();
         });
     },
 
     download: async function([filename, path]){
         if (!checkArgs(arguments[0], 2, "remote_filename path")) return;
-        let writeStream = fs.createWriteStream(path);
-        await executeRemote( () => client.downloadTo(writeStream, filename), FTPResponseResultHandler);
+        await download(filename, path);
+    },
+
+    downloadDir: async function([path]){
+        if (!checkArgs(arguments[0], 1, "local_path")) return;
+        await downloadDir(path);
     }
 }
 
