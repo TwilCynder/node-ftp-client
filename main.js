@@ -96,7 +96,7 @@ async function connect(host, port, force = false){
  */
 function download_(remote_filename, local_path){
     let writeStream = fs.createWriteStream(local_path);
-    return executeRemote( () => client.downloadTo(writeStream, remote_filename), FTPResponseResultHandler);
+    return client.downloadTo(writeStream, remote_filename);
 }
 
 /**
@@ -141,16 +141,14 @@ async function downloadDir(local_path, filter){
         return;
     }
 
-    await executeRemote(async () => {
-        let res = await client.list();
-        for (let fileInfo of res){
-            if (fileInfo.type == 1){
-                if (!filter || filter.test(fileInfo.name)){
-                    await downloadToDir(fileInfo.name, local_path);
-                }
+    let res = await client.list();
+    for (let fileInfo of res){
+        if (fileInfo.type == 1){
+            if (!filter || filter.test(fileInfo.name)){
+                await downloadToDir(fileInfo.name, local_path);
             }
         }
-    });
+    }
 }
 
 //-------- CL Commands --------------
@@ -194,12 +192,12 @@ cl.commands = {
 
     download: async function([filename, path]){
         if (!checkArgs(arguments[0], 2, "remote_filename path")) return;
-        await download(filename, path);
+        return executeRemote( () => download(filename, path), FTPResponseResultHandler);
     },
 
     downloadDir: async function([path]){
         if (!checkArgs(arguments[0], 1, "local_path")) return;
-        await downloadDir(path);
+        return executeRemote( () => downloadDir(path));
     }
 }
 
