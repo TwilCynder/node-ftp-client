@@ -89,8 +89,12 @@ if (process.argv.length > 2){
         process.exit(1);
     }
 
-    await client.connect_(process.argv[2], process.argv[3]);
-    console.log("Connected !");
+    let res = await client.connect_(process.argv[2], process.argv[3]);
+    if ((res > 0)){
+        console.log("Failed to connect.")
+    } else {
+        console.log("Connected !");
+    }
 }
 
 
