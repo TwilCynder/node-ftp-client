@@ -1,15 +1,14 @@
 #! node
 
 import cl from '@twilcynder/commandline'
-import {Client} from 'basic-ftp'
 import {executeRemote, logColor, FTPResponseResultHandler, checkArgs} from './helpers.js'
-import {download, downloadDir, connect} from './ftp.js'
+import {download, downloadDir, FTPClient} from './ftp.js'
 
 cl.takeMainModule();
 cl.enableExit();
 cl.enableList();
 
-let client = new Client();
+let client = new FTPClient();
 
 //------- Functions -------------
 
@@ -21,12 +20,24 @@ let client = new Client();
 
 cl.commands = {
     connect: function(args){
-        if (!checkArgs(args, 2, "host port"))
-        connect(client, args[0], args[1], false);
+        if (!checkArgs(args, 2, "host port")) return;
+        client.connect_( args[0], args[1], false).then((res) => {
+            if (!(res > 0)){
+                console.log("Connection successful")
+                console.log(res);
+                cl.stopLogging();
+            }
+        })
     },
 
     status: function(){
-        console.log(client.closed ? "Not connected" : `Connected to ${current_connection.host}:${current_connection.port}`);
+        if (client.closed){
+            console.log("Not connected");
+        } else {
+            let current_connection = client.getCurrentConnection();
+            console.log(`Connected to ${current_connection.host}:${current_connection.port}`);
+        }
+       cl.stopLogging();
     },
 
     close: function(){
@@ -34,7 +45,7 @@ cl.commands = {
     },
 
     pwd: async function(){
-        executeRemote(()=>client.pwd(), console.log);
+        executeRemote(()=>client.pwd(), cl.logOnce);
     },
 
     cd: async function([path]){
@@ -63,7 +74,10 @@ cl.commands = {
 
     downloadDir: async function([path]){
         if (!checkArgs(arguments[0], 1, "local_path")) return;
-        return executeRemote( () => downloadDir(client, path));
+        return executeRemote( async () => {
+            await downloadDir(client, path);
+            cl.stopLogging();
+        });
     }
 }
 
@@ -75,7 +89,7 @@ if (process.argv.length > 2){
         process.exit(1);
     }
 
-    await connect(client, process.argv[2], process.argv[3]);
+    await client.connect_(process.argv[2], process.argv[3]);
     console.log("Connected !");
 }
 

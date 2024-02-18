@@ -6,16 +6,16 @@ settings:
 
 dependencies:
   '@twilcynder/commandline':
-    specifier: ^1.3.1
-    version: 1.3.2
+    specifier: ^1.4.0
+    version: 1.4.0
   basic-ftp:
     specifier: ^5.0.4
     version: 5.0.4
 
 packages:
 
-  /@twilcynder/commandline@1.3.2:
-    resolution: {integrity: sha512-bYxgjQzn7VxDHPyKxQ7RCMoizse0Z8hNxkQ+Fl3/L3PAXfFeW2txiiWva0fULcYrIfzWo9kIELpyhIXCveKo9g==}
+  /@twilcynder/commandline@1.4.0:
+    resolution: {integrity: sha512-Y4lw5HYwG9vmEML+xiHYFROrbLSi5nyk2DjZXN1Clzpj6sFG3LzGXklYda1wl0H3CbNbAUfOqWwERg1fYeA/9A==}
     dev: false
 
   /basic-ftp@5.0.4:

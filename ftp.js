@@ -1,40 +1,54 @@
 import fs from 'fs'
-import cl from '@twilcynder/commandline'
+import { Client } from 'basic-ftp';
 
-var current_connection = {
-    host: null,
-    port: null
+export class FTPClient extends Client {
+    constructor(){
+        super()
+        this.current_connection = {
+            host: null,
+            port: null
+        };
+    }
+
+    async connect_(host, port, force = false){
+        if (!this.closed){
+            if (force){
+                this.close();    
+            } else {
+                console.error("Already connected");
+                return 1;
+            }
+        }
+    
+        try {
+            let res = await super.access({
+                host, port
+            });
+    
+            this.current_connection = {host, port};
+    
+            return res;
+        } catch (err){
+            console.error("Could not connect to the server : ", err);
+            return 2;
+        }
+    }
+
+    getCurrentConnection(){
+        return this.current_connection;
+    }
 }
 
 /**
  * Connects to a host. If already connected, closes the connection and connects or fails, depending on the force argument
+ * @param {FTPClient} client 
  * @param {string} host 
  * @param {number} port 
  * @param {boolean} force If true, will override any open connection. If false, the function fails if a connection is already open.
  * @returns 
  */
-export async function connect(client, host, port, force = false){
-    if (!client.closed){
-        if (force){
-            client.close();    
-        } else {
-            console.error("Already connected");
-            return 1;
-        }
-    }
-
-    try {
-        let res = await client.access({
-            host, port
-        });
-
-        current_connection = {host, port};
-
-        return res;
-    } catch (err){
-        console.error("Could not connect to the server : ", err);
-        return 2;
-    }
+function connect(client, host, port, force = false){
+    return client.connect_(host, port, force);
 }
 
 /**
@@ -102,5 +116,4 @@ export async function downloadDir(client, local_path, filter){
     }
 
     console.log("Finished dowloading.");
-    cl.stopLogging();
 }
