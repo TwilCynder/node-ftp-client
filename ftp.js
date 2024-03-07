@@ -10,7 +10,7 @@ export class FTPClient extends Client {
         };
     }
 
-    async connect_(host, port, force = false){
+    async connect_(host, port, user, password, force = false){
         if (!this.closed){
             if (force){
                 this.close();    
@@ -22,7 +22,7 @@ export class FTPClient extends Client {
     
         try {
             let res = await super.access({
-                host, port
+                host, port, user, password
             });
     
             this.current_connection = {host, port};
@@ -47,8 +47,8 @@ export class FTPClient extends Client {
  * @param {boolean} force If true, will override any open connection. If false, the function fails if a connection is already open.
  * @returns 
  */
-function connect(client, host, port, force = false){
-    return client.connect_(host, port, force);
+export function connect(client, host, port, username, password, force = false){
+    return client.connect_(host, port, username, password, force);
 }
 
 /**
