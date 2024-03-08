@@ -1,5 +1,6 @@
 import fs from 'fs'
 import { Client } from 'basic-ftp';
+import readline from 'readline'
 
 export class FTPClient extends Client {
     constructor(){
@@ -29,6 +30,7 @@ export class FTPClient extends Client {
     
             return res;
         } catch (err){
+            if (!this.closed) this.close();
             console.error("Could not connect to the server : ", err);
             return 2;
         }
@@ -39,6 +41,38 @@ export class FTPClient extends Client {
     }
 }
 
+function hiddenQuestion(query) {
+    return new Promise((resolve, reject) => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        const stdin = process.openStdin();
+        function handler(char) {
+            char = char + '';
+            switch (char) {
+              case '\n':
+              case '\r':
+              case '\u0004':
+                stdin.pause();
+                break;
+              default:
+                process.stdout.clearLine();
+                readline.cursorTo(process.stdout, 0);
+                process.stdout.write(query + Array(rl.line.length + 1).join('*'));
+                break;
+            }
+        };
+        process.stdin.on('data', handler);
+        rl.question(query, value => {
+            rl.history = rl.history.slice(1);
+            rl.close();
+            process.stdin.off('data', handler)
+            resolve(value);
+        });
+    });
+} 
+
 /**
  * Connects to a host. If already connected, closes the connection and connects or fails, depending on the force argument
  * @param {FTPClient} client 
@@ -47,8 +81,13 @@ export class FTPClient extends Client {
  * @param {boolean} force If true, will override any open connection. If false, the function fails if a connection is already open.
  * @returns 
  */
-export function connect(client, host, port, username, password, force = false){
-    return client.connect_(host, port, username, password, force);
+export async function connect(client, host, port, username, force = false){
+    let password;
+    if (username){
+        password = await hiddenQuestion("password : ");
+    }
+
+    return await client.connect_(host, port, username, password, force);
 }
 
 /**

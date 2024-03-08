@@ -2,7 +2,7 @@
 
 import cl from '@twilcynder/commandline'
 import {executeRemote, logColor, FTPResponseResultHandler, checkArgs} from './helpers.js'
-import {download, downloadDir, FTPClient} from './ftp.js'
+import {connect, download, downloadDir, FTPClient} from './ftp.js'
 
 cl.takeMainModule();
 cl.enableExit();
@@ -21,7 +21,7 @@ let client = new FTPClient();
 cl.commands = {
     connect: function(args){
         if (!checkArgs(args, 2, "host port")) return;
-        client.connect_( args[0], args[1], false).then((res) => {
+        client.connect_( args[0], args[1], args[3]).then((res) => {
             if (!(res > 0)){
                 console.log("Connection successful")
                 console.log(res);
@@ -85,11 +85,18 @@ cl.commands = {
 
 if (process.argv.length > 2){
     if (process.argv.length < 4){
-        console.error("Usage : node main.js [host port]");
+        console.error("Usage : node main.js [host port [username]]");
         process.exit(1);
     }
 
-    let res = await client.connect_(process.argv[2], process.argv[3]);
+    let res;
+    if (process.argv.length > 4){
+        res = await connect(client, process.argv[2], process.argv[3], process.argv[4]);
+    } else {
+        res = await connect(client, process.argv[2], process.argv[3]);
+    }
+
+    
     if ((res > 0)){
         console.log("Failed to connect.")
     } else {
